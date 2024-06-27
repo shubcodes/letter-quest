@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Guessing Game</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #game-container { margin: 20px; }
+        .hidden { display: none; }
+        .alphabet { display: flex; justify-content: space-between; margin: 20px 0; }
+        .alphabet span { padding: 5px; font-size: 20px; }
+        .highlight { background-color: yellow; }
+        .greyed-out { color: grey; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Word Guessing Game</h1>
+        <div id="set-word-container">
+            <h2>Set Secret Word</h2>
+            <input type="text" id="secret-word-input" placeholder="Enter secret word">
+            <button onclick="setSecretWord()">Set Word</button>
+            <p id="set-word-message"></p>
+        </div>
+        <div id="guess-container" class="hidden">
+            <h2>Make a Guess</h2>
+            <input type="text" id="guess-input" placeholder="Enter your guess">
+            <button onclick="makeGuess()">Guess</button>
+            <p id="guess-message"></p>
+            <h3>Previous Guesses:</h3>
+            <ul id="guess-list"></ul>
+            <p id="between-message"></p>
+            <div id="alphabet-container" class="alphabet"></div>
+        </div>
+    </div>
+    <script>
+        const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
+
+        async function setSecretWord() {
+            const word = document.getElementById('secret-word-input').value;
+            const response = await fetch('/setSecretWord', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ word: word })
+            });
+            const message = await response.text();
+            document.getElementById('set-word-message').innerText = message;
+            document.getElementById('guess-container').classList.remove('hidden');
+            updateAlphabetDisplay();
+        }
+
+        async function makeGuess() {
+            const word = document.getElementById('guess-input').value;
+            const response = await fetch('/makeGuess', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ word: word })
+            });
+
+            if (!response.ok) {
+                const errorMessage = await response.text();
+                document.getElementById('guess-message').innerText = `Error: ${errorMessage}`;
+                return;
+            }
+
+            const data = await response.json();
+            document.getElementById('guess-message').innerText = `The secret word is closer to the ${data.closerTo} word. Distance: ${data.distance}%`;
+
+            const guessList = document.getElementById('guess-list');
+            guessList.innerHTML = '';
+            data.guesses.forEach(guess => {
+                const li = document.createElement('li');
+                li.innerText = guess;
+                guessList.appendChild(li);
+            });
+
+            document.getElementById('between-message').innerText = `The secret word is between ${data.between[0]} and ${data.between[1]}.`;
+
+            console.log("between: " + data.between);
+            updateAlphabetDisplay(data.between[0][0], data.between[1][0]);
+        }
+
+        function updateAlphabetDisplay(lower = 'a', upper = 'z') {
+            const alphabetContainer = document.getElementById('alphabet-container');
+            alphabetContainer.innerHTML = '';
+            alphabet.forEach(letter => {
+                const span = document.createElement('span');
+                span.innerText = letter;
+                if (letter >= lower && letter <= upper) {
+                    span.classList.add('highlight');
+                } else {
+                    span.classList.add('greyed-out');
+                }
+                alphabetContainer.appendChild(span);
+            });
+        }
+    </script>
+</body>
+</html>
